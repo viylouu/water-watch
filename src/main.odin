@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:math/linalg/glsl"
 
 import "../eat"
+import "../eat/core/eaw"
 import "../eat/core/ear"
 
 import "models"
@@ -52,10 +53,10 @@ main :: proc() {
     }, &pln_data, size_of(pln_data))
     defer ear.delete_buffer(ubo)
 
-    pln_data.viewproj = glsl.mat4Perspective(90 * (3.14159 / 180.), 4./3., .1, 1000)
-
     for eat.frame() {
         ear.clear([3]f32{ .2, .4, .3 })
+
+        pln_data.viewproj = glsl.mat4Perspective(90 * (3.14159 / 180.), f32(eaw.width)/f32(eaw.height), .1, 1000)
 
         ear.update_buffer(&ubo)
 
