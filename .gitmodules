@@ -1,0 +1,3 @@
+[submodule "eat-engine"]
+	path = eat
+	url = https://github.com/viylouu/eat-engine.git
