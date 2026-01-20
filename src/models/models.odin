@@ -7,6 +7,7 @@ import "core:strings"
 import gl "vendor:OpenGL"
 
 Mesh :: struct{
+    name: string,
     verts: []Vertex,
 }
 
@@ -17,8 +18,11 @@ Vertex :: struct{
 }
 
 
-load_obj :: proc(data: []u8) -> Mesh {
-    mesh := Mesh{}
+load_obj :: proc(data: []u8) -> [dynamic]Mesh {
+    meshes := make([dynamic]Mesh)
+    mesh: ^Mesh
+
+    i: u32
 
     verts: [dynamic][3]f32
     normals: [dynamic][3]f32
@@ -68,6 +72,29 @@ load_obj :: proc(data: []u8) -> Mesh {
                             u32(d), u32(e), u32(f),
                             u32(g), u32(h), u32(i) }
             append(&tris, arr)
+        case "o":
+            if mesh != nil {
+                if len(uvs) == 0 do append(&uvs, [2]f32 { 0,0 })
+
+                mesh.verts = make([]Vertex, len(tris)*3)
+
+                for i in 0..<len(tris) do for j in 0..<3 {
+                    a,b,c := tris[i][j*3 +0],
+                             tris[i][j*3 +1],
+                             tris[i][j*3 +2]
+
+                    mesh.verts[i*3 + j] = Vertex{
+                        pos = verts[a],
+                        uv = uvs[b],
+                        norm = normals[c],
+                    }
+                }
+            }
+
+            clear(&tris)
+
+            append(&meshes, Mesh{ name = split[1] })
+            mesh = &meshes[len(meshes)-1]
         }
     }
 
@@ -87,9 +114,13 @@ load_obj :: proc(data: []u8) -> Mesh {
         }
     }
 
-    return mesh
+    return meshes
 }
 
 delete_mesh :: proc(mesh: Mesh) {
     delete(mesh.verts)
+}
+
+delete_meshes :: proc(meshes: []Mesh) {
+    for mesh in meshes do delete_mesh(mesh)
 }

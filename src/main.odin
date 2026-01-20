@@ -11,6 +11,12 @@ import "../eat/core/ear"
 
 import "models"
 
+FullMesh :: struct{
+    mesh: ^models.Mesh,
+    vbo: ear.Buffer,
+    pln: ear.Pipeline,
+}
+
 main :: proc() {
     eat.init(
             800, 600,
@@ -19,35 +25,48 @@ main :: proc() {
         )
     defer eat.stop()
 
-    model := models.load_obj(#load("../data/models/santa.obj"))
-    defer models.delete_mesh(model)
+    mods := models.load_obj(#load("../data/models/santa.obj"))
+    defer models.delete_meshes(mods[:])
 
-    vert := #load("../data/shaders/obj.vert", cstring)
-    frag := #load("../data/shaders/obj.frag", cstring)
+    meshes := make([]FullMesh, len(mods))
+    for &mesh, i in meshes {
+        vert := #load("../data/shaders/obj.vert", cstring)
+        frag := #load("../data/shaders/obj.frag", cstring)
 
-    vbo := ear.create_buffer({
-            type = .Vertex,
-            usage = .Static,
-            stride = size_of(models.Vertex),
-        }, &model.verts[0], size_of(models.Vertex) * u32(len(model.verts)))
-    defer ear.delete_buffer(vbo)
+        mesh.mesh = &mods[i]
+        if len(mesh.mesh.verts) == 0 do continue
 
-    pln := ear.create_pipeline({
-            vertex = { source = &vert },
-            fragment = { source = &frag },
-            vertex_attribs = []ear.VertexAttribDesc {
-                ear.VertexAttribDesc{ buffer = &vbo, location = 0, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 0 * size_of(f32), },
-                ear.VertexAttribDesc{ buffer = &vbo, location = 1, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 3 * size_of(f32), },
-                ear.VertexAttribDesc{ buffer = &vbo, location = 2, type = .Float, components = 2, norm = false, stride = size_of(models.Vertex), offset = 6 * size_of(f32), },
-            },
-            depth = true,
-            cull_mode = .Back,
-            front = .CCW,
-        })
-    defer ear.delete_pipeline(pln)
+        mesh.vbo = ear.create_buffer({
+                type = .Vertex,
+                usage = .Static,
+                stride = size_of(models.Vertex),
+            }, &mesh.mesh.verts[0], size_of(models.Vertex) * u32(len(mesh.mesh.verts)))
+        //defer ear.delete_buffer(mesh.vbo)
+
+        mesh.pln = ear.create_pipeline({
+                vertex = { source = &vert },
+                fragment = { source = &frag },
+                vertex_attribs = []ear.VertexAttribDesc {
+                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 0, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 0 * size_of(f32), },
+                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 1, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 3 * size_of(f32), },
+                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 2, type = .Float, components = 2, norm = false, stride = size_of(models.Vertex), offset = 6 * size_of(f32), },
+                },
+                depth = true,
+                cull_mode = .Back,
+                front = .CCW,
+            })
+        //defer ear.delete_pipeline(mesh.pln)
+    }
+    defer for &mesh in meshes {
+        ear.delete_pipeline(mesh.pln)
+        ear.delete_buffer(mesh.vbo)
+    }
+
+    defer delete(meshes)
 
     pln_data: struct{
-        viewproj: glsl.mat4
+        viewproj: glsl.mat4,
+        cam: [3]f32,
     }
 
     ubo := ear.create_buffer({
@@ -60,12 +79,40 @@ main :: proc() {
     pos: [3]f32
     rot: [3]f32
 
-    for eat.frame() {
-        ear.clear([3]f32{ .2, .4, .3 })
 
-        pln_data.viewproj = glsl.mat4Perspective(90 * (3.14159 / 180.), f32(eaw.width)/f32(eaw.height), .1, 1000) * 
+    fbcol := ear.create_texture({
+            filter = .Nearest,
+            type = .Color,
+        }, nil, 640, 360)
+    fbdepth := ear.create_texture({
+            filter = .Nearest,
+            type = .Depth,
+        }, nil, 640, 360)
+    defer { ear.delete_texture(fbcol) ;; ear.delete_texture(fbdepth) }
+    fb := ear.create_framebuffer({
+            out_colors = { &fbcol },
+            out_depth = &fbdepth,
+        })
+    defer ear.delete_framebuffer(fb)
+
+    fbvert := #load("../data/shaders/post.vert", cstring)
+    fbfrag := #load("../data/shaders/post.frag", cstring)
+
+    fbpln := ear.create_pipeline({
+            vertex = { source = &fbvert },
+            fragment = { source = &fbfrag },
+        })
+    defer ear.delete_pipeline(fbpln)
+
+
+    for eat.frame() {
+        ear.bind_framebuffer(fb)
+        ear.clear([3]f32{ 229 /255., 216 /255., 211 /255. })
+
+        pln_data.viewproj = glsl.mat4Perspective(90 * (3.14159 / 180.), 640./360., .1, 1000) * 
                             glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
                             glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
+        pln_data.cam = -pos
 
         sind, cosd := math.sin(rot.y), math.cos(rot.y)
         speed, rspeed :: 4., 2.
@@ -84,11 +131,17 @@ main :: proc() {
         if eaw.is_key(.Down) do rot.x += eaw.delta * rspeed
 
         ear.update_buffer(&ubo)
-
-        ear.bind_pipeline(pln)
         ear.bind_buffer(ubo, 0)
-        ear.draw(len(model.verts))
+        for mesh in meshes {
+            ear.bind_pipeline(mesh.pln)
+            ear.draw(len(mesh.mesh.verts))
+        }
 
         fmt.println(math.round(1/eaw.delta), "fps")
+
+        ear.bind_framebuffer(nil)
+        ear.bind_pipeline(fbpln)
+        ear.bind_texture(fbcol, 0)
+        ear.draw(6)
     }
 }
