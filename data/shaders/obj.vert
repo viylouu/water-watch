@@ -8,9 +8,11 @@ layout(std140, binding = 0) uniform uni {
     mat4 viewproj;
 };
 
+out vec3 fNorm;
 out vec2 fUv;
 
 void main() {
+    fNorm = aNorm;
     fUv = aUv;
-    gl_Position = viewproj * vec4(aPos + vec3(0,0,-2), 1);
+    gl_Position = viewproj * vec4(aPos, 1);
 }
