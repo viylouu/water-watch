@@ -25,7 +25,7 @@ main :: proc() {
         )
     defer eat.stop()
 
-    mods := models.load_obj(#load("../data/models/santa.obj"))
+    mods := models.load_obj(#load("../data/models/scene.obj"))
     defer models.delete_meshes(mods[:])
 
     meshes := make([]FullMesh, len(mods))
@@ -69,6 +69,7 @@ main :: proc() {
         viewproj: glsl.mat4,
         cam: [3]f32,
         time: f32,
+        obj: u32,
     }
 
     ubo := ear.create_buffer({
@@ -80,6 +81,29 @@ main :: proc() {
 
     pos: [3]f32
     rot: [3]f32
+
+
+    skyvert := #load("../data/shaders/sky.vert", cstring)
+    skyfrag := #load("../data/shaders/sky.frag", cstring)
+
+    skypln := ear.create_pipeline({
+            vertex = { source = &skyvert },
+            fragment = { source = &skyfrag },
+        })
+    defer ear.delete_pipeline(skypln)
+
+    skypln_data: struct{
+        inv_proj: glsl.mat4,
+        view: glsl.mat4,
+        time: f32,
+    } = {}
+
+    skyubo := ear.create_buffer({
+            type = .Uniform,
+            usage = .Dynamic,
+            stride = size_of(skypln_data)
+        }, &skypln_data, size_of(skypln_data))
+    defer ear.delete_buffer(skyubo)
 
 
     fbcol := ear.create_texture({
@@ -107,18 +131,25 @@ main :: proc() {
     defer ear.delete_pipeline(fbpln)
 
 
-    for eat.frame() {
-        ear.bind_framebuffer(fb)
-        ear.clear([3]f32{ 229 /255., 216 /255., 211 /255. })
+    toggled: bool = true
+    eaw.mouse_mode(.Locked)
 
-        pln_data.viewproj = glsl.mat4Perspective(90 * (3.14159 / 180.), 640./360., .1, 1000) * 
-                            glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
-                            glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
-        pln_data.cam = -pos
+    for eat.frame() {
+        proj := glsl.mat4Perspective(90 * (3.14159 / 180.), 640./360., .1, 1000)
+        view := glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
+                glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
+
+        skypln_data.inv_proj = glsl.inverse(proj)
+        skypln_data.view = view
+        skypln_data.time = eaw.time
+
+        pln_data.viewproj = proj * view
+                                       
         pln_data.time = eaw.time
+        pln_data.cam = pos
 
         sind, cosd := math.sin(rot.y), math.cos(rot.y)
-        speed, rspeed :: 4., 2.
+        speed, rspeed :: 6., 3.
 
         if eaw.is_key(.W) do pos += [3]f32{ -sind, 0, cosd } * eaw.delta * speed
         if eaw.is_key(.S) do pos -= [3]f32{ -sind, 0, cosd } * eaw.delta * speed
@@ -133,10 +164,36 @@ main :: proc() {
         if eaw.is_key(.Up) do rot.x -= eaw.delta * rspeed
         if eaw.is_key(.Down) do rot.x += eaw.delta * rspeed
 
-        ear.update_buffer(&ubo)
-        ear.bind_buffer(ubo, 0)
+        if rot.x < -3.14159/2. do rot.x = -3.14159/2.
+        else if rot.x > 3.14159/2. do rot.x = 3.14159/2.
+
+        if toggled {
+            rot.y += eaw.mouse_delta.x * .004
+            rot.x += eaw.mouse_delta.y * .004
+
+            eaw.mouse_mode(.Locked)
+        } else do eaw.mouse_mode(.Normal)
+
+        if eaw.is_key_pressed(.Escape) do toggled = !toggled
+
+        ear.bind_framebuffer(fb)
+        ear.clear([3]f32{ 229 /255., 216 /255., 211 /255. })
+
+        ear.bind_pipeline(skypln)
+        ear.update_buffer(&skyubo)
+        ear.bind_buffer(skyubo, 0)
+        ear.draw(6)
+
         for mesh in meshes {
             ear.bind_pipeline(mesh.pln)
+
+            pln_data.obj = 0
+
+            if mesh.mesh.name == "water" do pln_data.obj = 1
+
+            ear.update_buffer(&ubo)
+            ear.bind_buffer(ubo, 0)
+
             ear.draw(len(mesh.mesh.verts))
         }
 

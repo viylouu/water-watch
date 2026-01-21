@@ -6,6 +6,9 @@ in vec3 fPos;
 flat in vec3 fCam;
 flat in float fTime;
 in vec3 fCol;
+flat in uint fId;
+flat in uint fObj;
+in vec3 fPos2;
 
 out vec4 oCol;
 
@@ -56,24 +59,36 @@ float dither4x4x4(vec3 position, float brightness) {
     return brightness < limit ? 0.0 : 1.0;
 }
 
+float rand(float co){
+    return fract(sin(dot(vec2(co,0), vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main() {
-    const vec3 fog = vec3(229 /255., 216 /255., 211 /255.);
+    float dist = distance(fPos, -fCam);
+    float cdist = clamp(dist * .08 - 5, 0,1);
+    if (cdist == 1) discard;
+    cdist = pow(cdist, .14);
+
+    const vec3 fog = vec3(.319, .39, .5);
 
     vec3 pos = round(fPos * 32) / 32 * 16;
-    float noise = noise(pos);
-    noise = floor(noise * 2 + dither4x4x4(pos * 2 + vec3(fTime * 8, 0, 0), noise));
-    vec3 col = mix(vec3(.8), vec3(.9), noise);
+    vec3 ditherpos = pos * 2 + vec3(fNorm.z, fNorm.y, fNorm.x) * fTime * 8;
+    float n = noise(pos * vec3(abs(fNorm.z)*.25 + abs(fNorm.x)*1 + abs(fNorm.y)*.25, 1.5, abs(fNorm.z)*1 + abs(fNorm.x)*.25 + abs(fNorm.y)*1.5));
+    n = floor(n * 2 + dither4x4x4(ditherpos, n));
+    vec3 col = mix(vec3(.8), vec3(.9), n);
     col = col * fCol;
     
-    float bright = dot(fNorm, vec3(-1,-1,-1)) *.2 +.8;
+    float bright = dot(fNorm, normalize(vec3(-.5,1,-.75))) *.2 +.8;
     bright = clamp(bright, .2,1.);
     //float bright = 1;
 
-    float dist = distance(fPos, fCam);
-    dist = dist * .14 - .2;
-    dist = clamp(dist, 0,1);
+    if (fObj == 1) {
+        ditherpos -= vec3(0,fNorm.y,0) * fTime * 8;
+        ditherpos /= floor(clamp(pow(dist, 1.15) * .15, 1,8));
+        col += .1 * dither4x4x4(ditherpos, clamp((fPos2.y +10) * .5 + .5, 0,1));
+        vec3 t = -vec3(fTime, 0, fTime);
+        col -= .05 * vec3(noise(pos/32 + t * 2) + noise(pos/8 + t * 4) + noise(pos/12 + t * 2));
+    }
 
-    if (dist == 1) discard;
-
-    oCol = vec4(mix(col * bright, fog, dist), 1);
+    oCol = vec4(mix(col * bright, fog, cdist), 1);
 }
