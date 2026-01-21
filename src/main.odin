@@ -50,6 +50,7 @@ main :: proc() {
                     ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 0, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 0 * size_of(f32), },
                     ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 1, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 3 * size_of(f32), },
                     ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 2, type = .Float, components = 2, norm = false, stride = size_of(models.Vertex), offset = 6 * size_of(f32), },
+                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 3, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 8 * size_of(f32), },
                 },
                 depth = true,
                 cull_mode = .Back,

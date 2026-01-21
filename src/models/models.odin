@@ -15,6 +15,7 @@ Vertex :: struct{
     pos: [3]f32, 
     norm: [3]f32, 
     uv: [2]f32,
+    col: [3]f32,
 }
 
 
@@ -24,7 +25,7 @@ load_obj :: proc(data: []u8) -> [dynamic]Mesh {
 
     i: u32
 
-    verts: [dynamic][3]f32
+    verts: [dynamic][6]f32
     normals: [dynamic][3]f32
     uvs: [dynamic][2]f32
     tris: [dynamic][9]u32
@@ -40,7 +41,16 @@ load_obj :: proc(data: []u8) -> [dynamic]Mesh {
                                    strconv.parse_f32(split[3])
             assert(okx && oky && okz)
 
-            append(&verts, [3]f32 { x,y,z })
+            r,g,b: f32
+
+            if len(split) > 4 {
+                okr, okg, okb: bool
+                r,okr, g,okg, b,okb = strconv.parse_f32(split[4]),
+                                      strconv.parse_f32(split[5]),
+                                      strconv.parse_f32(split[6])
+            }
+
+            append(&verts, [6]f32 { x,y,z, r,g,b })
         case "vn":
             x,okx, y,oky, z,okz := strconv.parse_f32(split[1]),
                                    strconv.parse_f32(split[2]),
@@ -83,10 +93,13 @@ load_obj :: proc(data: []u8) -> [dynamic]Mesh {
                              tris[i][j*3 +1],
                              tris[i][j*3 +2]
 
+                    v := verts[a]
+
                     mesh.verts[i*3 + j] = Vertex{
-                        pos = verts[a],
+                        pos = { v[0], v[1], v[2] },
                         uv = uvs[b],
                         norm = normals[c],
+                        col = { v[3], v[4], v[5] },
                     }
                 }
             }
@@ -107,10 +120,13 @@ load_obj :: proc(data: []u8) -> [dynamic]Mesh {
                  tris[i][j*3 +1],
                  tris[i][j*3 +2]
 
+        v := verts[a]
+
         mesh.verts[i*3 + j] = Vertex{
-            pos = verts[a],
+            pos = { v[0], v[1], v[2] },
             uv = uvs[b],
             norm = normals[c],
+            col = { v[3], v[4], v[5] },
         }
     }
 

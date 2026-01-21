@@ -5,6 +5,7 @@ in vec2 fUv;
 in vec3 fPos;
 flat in vec3 fCam;
 flat in float fTime;
+in vec3 fCol;
 
 out vec4 oCol;
 
@@ -62,7 +63,7 @@ void main() {
     float noise = noise(pos);
     noise = floor(noise * 2 + dither4x4x4(pos * 2 + vec3(fTime * 8, 0, 0), noise));
     vec3 col = mix(vec3(.8), vec3(.9), noise);
-    col = col * fog;
+    col = col * fCol;
     
     float bright = dot(fNorm, vec3(-1,-1,-1)) *.2 +.8;
     bright = clamp(bright, .2,1.);
