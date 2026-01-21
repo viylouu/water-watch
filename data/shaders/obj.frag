@@ -4,6 +4,7 @@ in vec3 fNorm;
 in vec2 fUv;
 in vec3 fPos;
 flat in vec3 fCam;
+flat in float fTime;
 
 out vec4 oCol;
 
@@ -54,13 +55,12 @@ float dither4x4x4(vec3 position, float brightness) {
     return brightness < limit ? 0.0 : 1.0;
 }
 
-
 void main() {
     const vec3 fog = vec3(229 /255., 216 /255., 211 /255.);
 
     vec3 pos = round(fPos * 32) / 32 * 16;
     float noise = noise(pos);
-    noise = floor(noise * 2 + dither4x4x4(pos * 2, noise));
+    noise = floor(noise * 2 + dither4x4x4(pos * 2 + vec3(fTime * 8, 0, 0), noise));
     vec3 col = mix(vec3(.8), vec3(.9), noise);
     col = col * fog;
     

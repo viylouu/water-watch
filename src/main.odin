@@ -67,6 +67,7 @@ main :: proc() {
     pln_data: struct{
         viewproj: glsl.mat4,
         cam: [3]f32,
+        time: f32,
     }
 
     ubo := ear.create_buffer({
@@ -113,6 +114,7 @@ main :: proc() {
                             glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
                             glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
         pln_data.cam = -pos
+        pln_data.time = eaw.time
 
         sind, cosd := math.sin(rot.y), math.cos(rot.y)
         speed, rspeed :: 4., 2.
