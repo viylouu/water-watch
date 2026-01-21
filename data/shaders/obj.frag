@@ -88,7 +88,7 @@ void main() {
         col += .1 * dither4x4x4(ditherpos, clamp((fPos2.y +10) * .5 + .5, 0,1));
         vec3 t = -vec3(fTime, 0, fTime);
         col -= .05 * vec3(noise(pos/32 + t * 2) + noise(pos/8 + t * 4) + noise(pos/12 + t * 2));
-    }
+    } else col -= .075 * vec3(noise(pos/24) + noise(pos/8) + noise(pos/12));
 
     oCol = vec4(mix(col * bright, fog, cdist), 1);
 }

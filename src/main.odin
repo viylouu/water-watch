@@ -81,7 +81,11 @@ main :: proc() {
 
     pos: [3]f32
     rot: [3]f32
-
+    fov: f32
+    targfov: f32
+    zoomfov :f32: 30.
+    regfov :f32: 90.
+    fovspeed :f32: .12
 
     skyvert := #load("../data/shaders/sky.vert", cstring)
     skyfrag := #load("../data/shaders/sky.frag", cstring)
@@ -135,7 +139,7 @@ main :: proc() {
     eaw.mouse_mode(.Locked)
 
     for eat.frame() {
-        proj := glsl.mat4Perspective(90 * (3.14159 / 180.), 640./360., .1, 1000)
+        proj := glsl.mat4Perspective(fov * (3.14159 / 180.), 640./360., .1, 1000)
         view := glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
                 glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
 
@@ -163,6 +167,10 @@ main :: proc() {
         if eaw.is_key(.Right) do rot.y += eaw.delta * rspeed
         if eaw.is_key(.Up) do rot.x -= eaw.delta * rspeed
         if eaw.is_key(.Down) do rot.x += eaw.delta * rspeed
+
+        if eaw.is_mouse(.Right) do targfov = zoomfov
+        else do targfov = regfov
+        fov += (targfov - fov) / ( fovspeed / eaw.delta )
 
         if rot.x < -3.14159/2. do rot.x = -3.14159/2.
         else if rot.x > 3.14159/2. do rot.x = 3.14159/2.
