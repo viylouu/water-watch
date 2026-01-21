@@ -65,7 +65,7 @@ float rand(float co){
 
 void main() {
     float dist = distance(fPos, -fCam);
-    float cdist = clamp(dist * .08 - 5, 0,1);
+    float cdist = clamp(dist * .03 - 5, 0,1);
     if (cdist == 1) discard;
     cdist = pow(cdist, .14);
 

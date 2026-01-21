@@ -46,5 +46,5 @@ void main() {
     float bright = pow(clamp(dot(norm, sun), 0,1), 12);
     oCol = vec4(mix(vec3(252/255.,195/255.,138/255.), vec3(1), bright + .4 * dither4x4x4(norm * 128 + vec3(time*4), round(bright*4)/4)), 1);
 
-    if (norm.y < 0) oCol = vec4(fog, 1);
+    if (norm.y < 0) oCol = vec4(mix(fog, oCol.rgb, clamp(.8 + 12 * norm.y, 0,1)), 1);
 }
