@@ -19,8 +19,8 @@ FullMesh :: struct{
 
 main :: proc() {
     eat.init(
-            800, 600,
-            "3d game",
+            800, 450,
+            "water watch",
             { vsync = false },
         )
     defer eat.stop()

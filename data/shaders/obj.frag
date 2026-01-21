@@ -67,7 +67,7 @@ void main() {
     float dist = distance(fPos, -fCam);
     float cdist = clamp(dist * .03 - 5, 0,1);
     if (cdist == 1) discard;
-    cdist = pow(cdist, .14);
+    cdist = pow(cdist, 1.5);
 
     const vec3 fog = vec3(.319, .39, .5);
 
