@@ -9,6 +9,7 @@ in vec3 fCol;
 flat in uint fId;
 flat in uint fObj;
 in vec3 fPos2;
+flat in vec3 fSunPos;
 
 out vec4 oCol;
 
@@ -72,13 +73,13 @@ void main() {
     const vec3 fog = vec3(.319, .39, .5);
 
     vec3 pos = round(fPos * 32) / 32 * 16;
-    vec3 ditherpos = pos * 2 + vec3(fNorm.z, fNorm.y, fNorm.x) * fTime * 8;
+    vec3 ditherpos = pos * 2 + vec3(fNorm.z + fNorm.y, 0, fNorm.x) * fTime * 8;
     float n = noise(pos * vec3(abs(fNorm.z)*.25 + abs(fNorm.x)*1 + abs(fNorm.y)*.25, 1.5, abs(fNorm.z)*1 + abs(fNorm.x)*.25 + abs(fNorm.y)*1.5));
     n = floor(n * 2 + dither4x4x4(ditherpos, n));
     vec3 col = mix(vec3(.8), vec3(.9), n);
     col = col * fCol;
     
-    float bright = dot(fNorm, normalize(vec3(-.5,1,-.75))) *.2 +.8;
+    float bright = dot(fNorm, normalize(fSunPos)) *.2 +.8;
     bright = clamp(bright, .2,1.);
     //float bright = 1;
 

@@ -67,9 +67,12 @@ main :: proc() {
 
     pln_data: struct{
         viewproj: glsl.mat4,
-        cam: [3]f32,
+        cam: [4]f32,
+        sunpos: [4]f32,
         time: f32,
         obj: u32,
+            _2: f32,
+            _3: f32,
     }
 
     ubo := ear.create_buffer({
@@ -87,6 +90,8 @@ main :: proc() {
     regfov :f32: 90.
     fovspeed :f32: .12
 
+    sunpos: [3]f32 = { -.5,1,-.75 }
+
     skyvert := #load("../data/shaders/sky.vert", cstring)
     skyfrag := #load("../data/shaders/sky.frag", cstring)
 
@@ -99,7 +104,11 @@ main :: proc() {
     skypln_data: struct{
         inv_proj: glsl.mat4,
         view: glsl.mat4,
+        sunpos: [4]f32,
         time: f32,
+            _0: f32,
+            _1: f32,
+            _2: f32,
     } = {}
 
     skyubo := ear.create_buffer({
@@ -146,11 +155,13 @@ main :: proc() {
         skypln_data.inv_proj = glsl.inverse(proj)
         skypln_data.view = view
         skypln_data.time = eaw.time
+        skypln_data.sunpos = sunpos.xyzx
 
         pln_data.viewproj = proj * view
                                        
         pln_data.time = eaw.time
-        pln_data.cam = pos
+        pln_data.cam = pos.xyzx
+        pln_data.sunpos = sunpos.xyzx
 
         sind, cosd := math.sin(rot.y), math.cos(rot.y)
         speed, rspeed :: 6., 3.

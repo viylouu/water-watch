@@ -5,6 +5,7 @@ in vec2 fUv;
 layout(std140, binding = 0) uniform uni {
     mat4 inv_proj;
     mat4 view;
+    vec4 sunpos;
     float time;
 };
 
@@ -41,7 +42,7 @@ void main() {
     mat3 viewrot = mat3(view);
     vec3 norm = normalize(viewp.xyz * viewrot);
 
-    vec3 sun = normalize(vec3(-.5,1,-.75));
+    vec3 sun = normalize(sunpos.xyz);
 
     float bright = pow(clamp(dot(norm, sun), 0,1), 12);
     oCol = vec4(mix(vec3(252/255.,195/255.,138/255.), vec3(1), bright + .4 * dither4x4x4(norm * 128 + vec3(time*4), round(bright*4)/4)), 1);

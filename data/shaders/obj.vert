@@ -7,7 +7,8 @@ layout (location = 3) in vec3 aCol;
 
 layout(std140, binding = 0) uniform uni {
     mat4 viewproj;
-    vec3 cam;
+    vec4 cam;
+    vec4 sunpos;
     float time;
     uint obj;
 };
@@ -21,16 +22,18 @@ out vec3 fCol;
 flat out uint fId;
 flat out uint fObj;
 out vec3 fPos2;
+flat out vec3 fSunPos;
 
 void main() {
     fNorm = aNorm;
     fUv = aUv;
     fPos = aPos;
-    fCam = cam;
+    fCam = cam.xyz;
     fTime = time;
     fCol = aCol;
     fId = gl_VertexID;
     fObj = obj;
+    fSunPos = sunpos.xyz;
 
     vec3 pos = aPos;
     float stime = time * .5;
