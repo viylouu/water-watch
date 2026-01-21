@@ -166,7 +166,8 @@ main :: proc() {
     sundepth := ear.create_texture({
             filter = .Linear,
             type = .Depth,
-            wrap = .Clamp,
+            wrap = .Color,
+            wrap_color = { 1,1,1,1 },
         }, nil, 4096, 4096)
     defer ear.delete_texture(sundepth)
     sunfb := ear.create_framebuffer({

@@ -89,7 +89,7 @@ void main() {
 
     if (fObj == 1) {
         ditherpos -= vec3(0,fNorm.y,0) * fTime * 8;
-        ditherpos /= floor(clamp(pow(dist, 1.15) * .15, 1,8));
+        ditherpos /= floor(max(pow(dist, 1.15) * .15, 1));
         col += .1 * dither4x4x4(ditherpos, clamp((fPos2.y +10) * .5 + .5, 0,1));
         vec3 t = -vec3(fTime, 0, fTime);
         col -= .05 * vec3(noise(pos/32 + t * 2) + noise(pos/8 + t * 4) + noise(pos/12 + t * 2));
@@ -110,10 +110,11 @@ void main() {
 
     vec4 shadow_coord = fSunBiasMVP * vec4(round(fPos * 32) / 32, 1);
 
-    for (int i = 0; i < 8; i++) {
-        if (texture(sundepth, vec3(shadow_coord.xy + fishDisk[i%4]/1400., shadow_coord.z)).r < shadow_coord.z - .001)
-            bright *= .9;
-    }
+    if (shadow_coord.z <= 1)
+        for (int i = 0; i < 8; i++) {
+            if (texture(sundepth, vec3(shadow_coord.xy + fishDisk[i%4]/1400., shadow_coord.z)).r < shadow_coord.z - .001)
+                bright *= .9;
+        }
 
     oCol = vec4(mix(col * bright, fog, cdist), 1);
 }
