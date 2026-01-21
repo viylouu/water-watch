@@ -24,7 +24,7 @@ flat out uint fId;
 flat out uint fObj;
 out vec3 fPos2;
 flat out vec3 fSunPos;
-out vec4 fShadowCoord;
+flat out mat4 fSunBiasMVP;
 
 void main() {
     fNorm = aNorm;
@@ -36,6 +36,7 @@ void main() {
     fId = gl_VertexID;
     fObj = obj;
     fSunPos = sunpos.xyz;
+    fSunBiasMVP = sun_biasmvp;
 
     vec3 pos = aPos;
     float stime = time * .5;
@@ -54,7 +55,6 @@ void main() {
     pos = round(pos * 32) / 32;
 
     fPos2 = pos;
-    fShadowCoord = sun_biasmvp * vec4(pos, 1);
 
     gl_Position = viewproj * vec4(pos, 1);
 }

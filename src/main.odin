@@ -107,7 +107,7 @@ main :: proc() {
     regfov :f32: 90.
     fovspeed :f32: .12
 
-    sunpos: [3]f32 = { -.5,1,-.75 }
+    sunpos: [3]f32 = { -1,1,-.5 }
 
     skyvert := #load("../data/shaders/sky.vert", cstring)
     skyfrag := #load("../data/shaders/sky.frag", cstring)
@@ -167,13 +167,13 @@ main :: proc() {
             filter = .Linear,
             type = .Depth,
             wrap = .Clamp,
-        }, nil, 2048, 2048)
+        }, nil, 4096, 4096)
     defer ear.delete_texture(sundepth)
     sunfb := ear.create_framebuffer({
             out_colors = {},
             out_depth = &sundepth,
-            width = 2048,
-            height = 2048,
+            width = 4096,
+            height = 4096,
         })
     defer ear.delete_framebuffer(sunfb)
 
@@ -210,7 +210,7 @@ main :: proc() {
         pln_data.cam = pos.xyzx
         pln_data.sunpos = sunpos.xyzx
 
-        _sun_proj  := glsl.mat4Ortho3d(-75,75,-75,75, -50,200)
+        _sun_proj  := glsl.mat4Ortho3d(-50,50,-50,50, -50,100)
         _sun_view  := glsl.mat4LookAt(sunpos.xyz, { 0,0,0 }, { 0,1,0 })
         _sun_model := glsl.mat4(1);
 

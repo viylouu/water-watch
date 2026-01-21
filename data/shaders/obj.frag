@@ -10,7 +10,7 @@ flat in uint fId;
 flat in uint fObj;
 in vec3 fPos2;
 flat in vec3 fSunPos;
-in vec4 fShadowCoord;
+flat in mat4 fSunBiasMVP;
 
 layout (location = 4) uniform sampler2DShadow sundepth;
 
@@ -108,9 +108,11 @@ void main() {
             vec2( 0.34495938, 0.29387760 )
         );
 
-    for (int i = 0; i < 4; i++) {
-        if (texture(sundepth, vec3(fShadowCoord.xy + fishDisk[i]/700., fShadowCoord.z)).r < fShadowCoord.z - .001)
-            bright *= .8;
+    vec4 shadow_coord = fSunBiasMVP * vec4(round(fPos * 32) / 32, 1);
+
+    for (int i = 0; i < 8; i++) {
+        if (texture(sundepth, vec3(shadow_coord.xy + fishDisk[i%4]/1400., shadow_coord.z)).r < shadow_coord.z - .001)
+            bright *= .9;
     }
 
     oCol = vec4(mix(col * bright, fog, cdist), 1);
