@@ -10,6 +10,9 @@ flat in uint fId;
 flat in uint fObj;
 in vec3 fPos2;
 flat in vec3 fSunPos;
+in vec4 fShadowCoord;
+
+layout (location = 4) uniform sampler2DShadow sundepth;
 
 out vec4 oCol;
 
@@ -79,7 +82,8 @@ void main() {
     vec3 col = mix(vec3(.8), vec3(.9), n);
     col = col * fCol;
     
-    float bright = dot(fNorm, normalize(fSunPos)) *.2 +.8;
+    vec3 sundir = normalize(fSunPos);
+    float bright = dot(fNorm, sundir) *.2 +.8;
     bright = clamp(bright, .2,1.);
     //float bright = 1;
 
@@ -89,7 +93,25 @@ void main() {
         col += .1 * dither4x4x4(ditherpos, clamp((fPos2.y +10) * .5 + .5, 0,1));
         vec3 t = -vec3(fTime, 0, fTime);
         col -= .05 * vec3(noise(pos/32 + t * 2) + noise(pos/8 + t * 4) + noise(pos/12 + t * 2));
+
+        vec3 viewdir = normalize(-fCam - fPos);
+        vec3 reflectdir = reflect(-sundir, fNorm);
+        float spec = pow(max(dot(viewdir, reflectdir), 0), 32);
+        spec = dither4x4x4(ditherpos, spec);
+        bright += spec * .5;
     } else col -= .075 * vec3(noise(pos/24) + noise(pos/8) + noise(pos/12));
+
+    const vec2 fishDisk[4] = vec2[](
+            vec2( -0.94201624, -0.39906216 ),
+            vec2( 0.94558609, -0.76890725 ),
+            vec2( -0.094184101, -0.92938870 ),
+            vec2( 0.34495938, 0.29387760 )
+        );
+
+    for (int i = 0; i < 4; i++) {
+        if (texture(sundepth, vec3(fShadowCoord.xy + fishDisk[i]/700., fShadowCoord.z)).r < fShadowCoord.z - .001)
+            bright *= .8;
+    }
 
     oCol = vec4(mix(col * bright, fog, cdist), 1);
 }

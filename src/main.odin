@@ -15,11 +15,12 @@ FullMesh :: struct{
     mesh: ^models.Mesh,
     vbo: ear.Buffer,
     pln: ear.Pipeline,
+    sunpln: ear.Pipeline,
 }
 
 main :: proc() {
     eat.init(
-            800, 450,
+            1600, 900,
             "water watch",
             { vsync = false },
         )
@@ -33,6 +34,11 @@ main :: proc() {
         vert := #load("../data/shaders/obj.vert", cstring)
         frag := #load("../data/shaders/obj.frag", cstring)
 
+        sunvert := #load("../data/shaders/sun.vert", cstring)
+        sunfrag := #load("../data/shaders/sun.frag", cstring)
+
+        
+
         mesh.mesh = &mods[i]
         if len(mesh.mesh.verts) == 0 do continue
 
@@ -41,7 +47,6 @@ main :: proc() {
                 usage = .Static,
                 stride = size_of(models.Vertex),
             }, &mesh.mesh.verts[0], size_of(models.Vertex) * u32(len(mesh.mesh.verts)))
-        //defer ear.delete_buffer(mesh.vbo)
 
         mesh.pln = ear.create_pipeline({
                 vertex = { source = &vert },
@@ -56,9 +61,20 @@ main :: proc() {
                 cull_mode = .Back,
                 front = .CCW,
             })
-        //defer ear.delete_pipeline(mesh.pln)
+
+        mesh.sunpln = ear.create_pipeline({
+                vertex = { source = &sunvert },
+                fragment = { source = &sunfrag },
+                vertex_attribs = []ear.VertexAttribDesc {
+                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 0, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 0 * size_of(f32), },
+                },
+                depth = true,
+                cull_mode = .Back,
+                front = .CCW,
+            })
     }
     defer for &mesh in meshes {
+        ear.delete_pipeline(mesh.sunpln)
         ear.delete_pipeline(mesh.pln)
         ear.delete_buffer(mesh.vbo)
     }
@@ -67,6 +83,7 @@ main :: proc() {
 
     pln_data: struct{
         viewproj: glsl.mat4,
+        sun_biasmvp: glsl.mat4,
         cam: [4]f32,
         sunpos: [4]f32,
         time: f32,
@@ -131,6 +148,8 @@ main :: proc() {
     fb := ear.create_framebuffer({
             out_colors = { &fbcol },
             out_depth = &fbdepth,
+            width = 640,
+            height = 360,
         })
     defer ear.delete_framebuffer(fb)
 
@@ -142,6 +161,34 @@ main :: proc() {
             fragment = { source = &fbfrag },
         })
     defer ear.delete_pipeline(fbpln)
+
+
+    sundepth := ear.create_texture({
+            filter = .Linear,
+            type = .Depth,
+            wrap = .Clamp,
+        }, nil, 2048, 2048)
+    defer ear.delete_texture(sundepth)
+    sunfb := ear.create_framebuffer({
+            out_colors = {},
+            out_depth = &sundepth,
+            width = 2048,
+            height = 2048,
+        })
+    defer ear.delete_framebuffer(sunfb)
+
+    sunpln_data: struct{
+        sun_mvp: glsl.mat4,
+        time: f32,
+        obj: u32,
+    } = {}
+
+    sunubo := ear.create_buffer({
+            type = .Uniform,
+            usage = .Dynamic,
+            stride = size_of(sunpln_data)
+        }, &sunpln_data, size_of(sunpln_data))
+    defer ear.delete_buffer(sunubo)
 
 
     toggled: bool = true
@@ -162,6 +209,22 @@ main :: proc() {
         pln_data.time = eaw.time
         pln_data.cam = pos.xyzx
         pln_data.sunpos = sunpos.xyzx
+
+        _sun_proj  := glsl.mat4Ortho3d(-75,75,-75,75, -50,200)
+        _sun_view  := glsl.mat4LookAt(sunpos.xyz, { 0,0,0 }, { 0,1,0 })
+        _sun_model := glsl.mat4(1);
+
+        sunpln_data.sun_mvp = _sun_proj * _sun_view * _sun_model
+        sunpln_data.time = eaw.time
+
+        _sun_bias := glsl.mat4{
+            .5, 0, 0, .5,
+            0, .5, 0, .5,
+            0, 0, .5, .5,
+            0, 0,  0, 1,
+        };
+
+        pln_data.sun_biasmvp = _sun_bias * sunpln_data.sun_mvp
 
         sind, cosd := math.sin(rot.y), math.cos(rot.y)
         speed, rspeed :: 6., 3.
@@ -195,6 +258,22 @@ main :: proc() {
 
         if eaw.is_key_pressed(.Escape) do toggled = !toggled
 
+        ear.bind_framebuffer(sunfb)
+        ear.clear([3]f32{ 0,0,0 })
+
+        for mesh in meshes {
+            ear.bind_pipeline(mesh.sunpln)
+
+            sunpln_data.obj = 0
+
+            if mesh.mesh.name == "water" do sunpln_data.obj = 1
+
+            ear.update_buffer(&sunubo)
+            ear.bind_buffer(sunubo, 0)
+
+            ear.draw(len(mesh.mesh.verts))
+        }
+
         ear.bind_framebuffer(fb)
         ear.clear([3]f32{ 229 /255., 216 /255., 211 /255. })
 
@@ -212,6 +291,7 @@ main :: proc() {
 
             ear.update_buffer(&ubo)
             ear.bind_buffer(ubo, 0)
+            ear.bind_texture(sundepth, 4)
 
             ear.draw(len(mesh.mesh.verts))
         }
