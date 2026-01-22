@@ -90,6 +90,7 @@ main :: proc() {
         obj: u32,
             _2: f32,
             _3: f32,
+        off: [4]f32,
     }
 
     ubo := ear.create_buffer({
@@ -101,6 +102,7 @@ main :: proc() {
 
     pos: [3]f32
     rot: [3]f32
+    model_off: [3]f32 = { 0,0,0 }
     fov: f32
     targfov: f32
     zoomfov :f32: 30.
@@ -182,6 +184,9 @@ main :: proc() {
         sun_mvp: glsl.mat4,
         time: f32,
         obj: u32,
+        yrot: f32,
+            _1: f32,
+        off: [4]f32,
     } = {}
 
     sunubo := ear.create_buffer({
@@ -196,37 +201,6 @@ main :: proc() {
     eaw.mouse_mode(.Locked)
 
     for eat.frame() {
-        proj := glsl.mat4Perspective(fov * (3.14159 / 180.), 640./360., .1, 1000)
-        view := glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
-                glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
-
-        skypln_data.inv_proj = glsl.inverse(proj)
-        skypln_data.view = view
-        skypln_data.time = eaw.time
-        skypln_data.sunpos = sunpos.xyzx
-
-        pln_data.viewproj = proj * view
-                                       
-        pln_data.time = eaw.time
-        pln_data.cam = pos.xyzx
-        pln_data.sunpos = sunpos.xyzx
-
-        _sun_proj  := glsl.mat4Ortho3d(-50,50,-50,50, -50,100)
-        _sun_view  := glsl.mat4LookAt(sunpos.xyz, { 0,0,0 }, { 0,1,0 })
-        _sun_model := glsl.mat4(1);
-
-        sunpln_data.sun_mvp = _sun_proj * _sun_view * _sun_model
-        sunpln_data.time = eaw.time
-
-        _sun_bias := glsl.mat4{
-            .5, 0, 0, .5,
-            0, .5, 0, .5,
-            0, 0, .5, .5,
-            0, 0,  0, 1,
-        };
-
-        pln_data.sun_biasmvp = _sun_bias * sunpln_data.sun_mvp
-
         sind, cosd := math.sin(rot.y), math.cos(rot.y)
         speed, rspeed :: 6., 3.
 
@@ -259,6 +233,37 @@ main :: proc() {
 
         if eaw.is_key_pressed(.Escape) do toggled = !toggled
 
+        proj := glsl.mat4Perspective(fov * (3.14159 / 180.), 640./360., .1, 1000)
+        view := glsl.mat4Rotate({ 1,0,0 }, rot.x) * glsl.mat4Rotate({ 0,1,0 }, rot.y) * 
+                glsl.mat4Rotate({ 0,0,1 }, rot.z) * glsl.mat4Translate(pos)
+
+        skypln_data.inv_proj = glsl.inverse(proj)
+        skypln_data.view = view
+        skypln_data.time = eaw.time
+        skypln_data.sunpos = sunpos.xyzx
+
+        pln_data.viewproj = proj * view
+                                       
+        pln_data.time = eaw.time
+        pln_data.cam = pos.xyzx
+        pln_data.sunpos = sunpos.xyzx
+
+        _sun_proj  := glsl.mat4Ortho3d(-50,50,-50,50, -50,100)
+        _sun_view  := glsl.mat4LookAt(sunpos.xyz, { 0,0,0 }, { 0,1,0 })
+        _sun_model := glsl.mat4(1);
+
+        sunpln_data.sun_mvp = _sun_proj * _sun_view * _sun_model
+        sunpln_data.time = eaw.time
+
+        _sun_bias := glsl.mat4{
+            .5, 0, 0, .5,
+            0, .5, 0, .5,
+            0, 0, .5, .5,
+            0, 0,  0, 1,
+        };
+
+        pln_data.sun_biasmvp = _sun_bias * sunpln_data.sun_mvp
+
         ear.bind_framebuffer(sunfb)
         ear.clear([3]f32{ 0,0,0 })
 
@@ -266,8 +271,14 @@ main :: proc() {
             ear.bind_pipeline(mesh.sunpln)
 
             sunpln_data.obj = 0
+            sunpln_data.off = { 0,0,0,0 }
+            sunpln_data.yrot = 0
 
             if mesh.mesh.name == "water" do sunpln_data.obj = 1
+            if mesh.mesh.name == "player" {
+                sunpln_data.off = -pos.xyzx + model_off.xyzx
+                sunpln_data.yrot = rot.y
+            }
 
             ear.update_buffer(&sunubo)
             ear.bind_buffer(sunubo, 0)
@@ -284,9 +295,11 @@ main :: proc() {
         ear.draw(6)
 
         for mesh in meshes {
+            if mesh.mesh.name == "player" do continue
             ear.bind_pipeline(mesh.pln)
 
             pln_data.obj = 0
+            pln_data.off = { 0, 0, 0, 0 }
 
             if mesh.mesh.name == "water" do pln_data.obj = 1
 

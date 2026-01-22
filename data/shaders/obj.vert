@@ -12,6 +12,7 @@ layout(std140, binding = 0) uniform uni {
     vec4 sunpos;
     float time;
     uint obj;
+    vec4 off;
 };
 
 out vec3 fNorm;
@@ -38,7 +39,7 @@ void main() {
     fSunPos = sunpos.xyz;
     fSunBiasMVP = sun_biasmvp;
 
-    vec3 pos = aPos;
+    vec3 pos = aPos + off.xyz;
     float stime = time * .5;
     pos += vec3(sin(stime + aPos.x * 24), 0, cos(stime + aPos.z * 24)) * .02;
     pos += vec3(cos(stime * 2 + aPos.x * 24), sin(stime * 1.5 + aPos.y * 24), 0) * .03;

@@ -87,20 +87,6 @@ void main() {
     bright = clamp(bright, .2,1.);
     //float bright = 1;
 
-    if (fObj == 1) {
-        ditherpos -= vec3(0,fNorm.y,0) * fTime * 8;
-        ditherpos /= floor(max(pow(dist, 1.15) * .15, 1));
-        col += .1 * dither4x4x4(ditherpos, clamp((fPos2.y +10) * .5 + .5, 0,1));
-        vec3 t = -vec3(fTime, 0, fTime);
-        col -= .05 * vec3(noise(pos/32 + t * 2) + noise(pos/8 + t * 4) + noise(pos/12 + t * 2));
-
-        vec3 viewdir = normalize(-fCam - fPos);
-        vec3 reflectdir = reflect(-sundir, fNorm);
-        float spec = pow(max(dot(viewdir, reflectdir), 0), 32);
-        spec = dither4x4x4(ditherpos, spec);
-        bright += spec * .5;
-    } else col -= .075 * vec3(noise(pos/24) + noise(pos/8) + noise(pos/12));
-
     const vec2 fishDisk[4] = vec2[](
             vec2( -0.94201624, -0.39906216 ),
             vec2( 0.94558609, -0.76890725 ),
@@ -108,13 +94,30 @@ void main() {
             vec2( 0.34495938, 0.29387760 )
         );
 
-    vec4 shadow_coord = fSunBiasMVP * vec4(round(fPos * 32) / 32, 1);
+    vec4 shadow_coord = fSunBiasMVP * vec4(round(fPos2 * 32) / 32, 1);
 
+    float shadow = 0;
     if (shadow_coord.z <= 1)
         for (int i = 0; i < 8; i++) {
             if (texture(sundepth, vec3(shadow_coord.xy + fishDisk[i%4]/1400., shadow_coord.z)).r < shadow_coord.z - .001)
-                bright *= .9;
+                shadow += 1./8;
         }
+
+    if (fObj == 1) {
+        ditherpos -= vec3(0,fNorm.y,0) * fTime * 8;
+        ditherpos /= floor(max(pow(dist, 1.15) * .15, 1));
+        col += .1 * dither4x4x4(ditherpos, clamp((fPos2.y +10) * .5 + .5, 0,1));
+        vec3 t = -vec3(fTime, 0, fTime);
+        col -= .05 * vec3(noise(pos/32 + t * 2) + noise(pos/8 + t * 4) + noise(pos/12 + t * 2));
+
+        vec3 viewdir = normalize(-fCam - round(fPos2 * 32) / 32);
+        vec3 reflectdir = reflect(-sundir, fNorm);
+        float spec = pow(max(dot(viewdir, reflectdir), 0), 32);
+        spec = dither4x4x4(ditherpos, spec);
+        bright += spec * .5 * (1-shadow);
+    } else col -= .075 * vec3(noise(pos/24) + noise(pos/8) + noise(pos/12));
+
+    bright *= 1-(shadow * .5);
 
     oCol = vec4(mix(col * bright, fog, cdist), 1);
 }

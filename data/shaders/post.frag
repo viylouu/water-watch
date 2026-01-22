@@ -83,8 +83,10 @@ float dither8x8(vec2 position, float brightness) {
 out vec4 oCol;
 
 void main() {
-    vec4 data = texture(tex, fUv);
-    if (data.a == 0) discard;
+    vec4 data;
+    data.r = texture(tex, fUv + vec2(1./640, 0)).r;
+    data.g = texture(tex, fUv + vec2(0, 0)).g;
+    data.b = texture(tex, fUv + vec2(-1./640, 0)).b;
 
     vec2 uv = fUv * vec2(640, 360);
 
