@@ -5,12 +5,12 @@ in vec2 fUv;
 layout (location = 0) uniform sampler2D tex;
 
 float dither8x8(vec2 position, float brightness) {
-  int x = int(mod(position.x, 8.0));
-  int y = int(mod(position.y, 8.0));
-  int index = x + y * 8;
-  float limit = 0.0;
+    int x = int(mod(position.x, 8.0));
+    int y = int(mod(position.y, 8.0));
+    int index = x + y * 8;
+    float limit = 0.0;
 
-  if (x < 8) {
+    if (x < 8) {
     if (index == 0) limit = 0.015625;
     if (index == 1) limit = 0.515625;
     if (index == 2) limit = 0.140625;
@@ -75,18 +75,34 @@ float dither8x8(vec2 position, float brightness) {
     if (index == 61) limit = 0.46875;
     if (index == 62) limit = 0.84375;
     if (index == 63) limit = 0.34375;
-  }
+    }
 
-  return brightness < limit ? 0.0 : 1.0;
+    return brightness < limit ? 0.0 : 1.0;
+}
+
+float lum(vec4 col) {
+    return dot(col.rgb, vec3(.299, .587, .114));
 }
 
 out vec4 oCol;
 
 void main() {
+    vec4 goon;
+    for (int x = -16; x < 17; x += 4) for (int y = -16; y < 17; y += 4) {
+        vec4 col = texture(tex, fUv + vec2(1./640 * x, 1./360 * y));
+        if (lum(col) > .8) goon += col;
+    }
+    goon /= 8*8;
+    goon *= .25;
+
     vec4 data;
     data.r = texture(tex, fUv + vec2(1./640, 0)).r;
     data.g = texture(tex, fUv + vec2(0, 0)).g;
     data.b = texture(tex, fUv + vec2(-1./640, 0)).b;
+
+    data += goon;
+
+    data.a = 1;
 
     vec2 uv = fUv * vec2(640, 360);
 

@@ -141,6 +141,7 @@ main :: proc() {
     fbcol := ear.create_texture({
             filter = .Nearest,
             type = .Color,
+            wrap = .Clamp,
         }, nil, 640, 360)
     fbdepth := ear.create_texture({
             filter = .Nearest,
@@ -163,6 +164,18 @@ main :: proc() {
             fragment = { source = &fbfrag },
         })
     defer ear.delete_pipeline(fbpln)
+
+    fbfbcol := ear.create_texture({
+            filter = .Nearest,
+            type = .Color,
+        }, nil, 640, 360)
+    defer ear.delete_texture(fbfbcol)
+    fbfb := ear.create_framebuffer({
+            out_colors = { &fbfbcol },
+            width = 640,
+            height = 360,
+        })
+    defer ear.delete_framebuffer(fbfb)
 
 
     sundepth := ear.create_texture({
@@ -312,9 +325,12 @@ main :: proc() {
 
         fmt.println(math.round(1/eaw.delta), "fps")
 
-        ear.bind_framebuffer(nil)
+        ear.bind_framebuffer(fbfb)
         ear.bind_pipeline(fbpln)
         ear.bind_texture(fbcol, 0)
         ear.draw(6)
+
+        ear.bind_framebuffer(nil)
+        ear.tex(&fbfbcol, 0,f32(eaw.height), f32(eaw.width),-f32(eaw.height), 1)
     }
 }
