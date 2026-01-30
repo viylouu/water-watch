@@ -14,8 +14,6 @@ import "models"
 FullMesh :: struct{
     mesh: ^models.Mesh,
     vbo: ear.Buffer,
-    pln: ear.Pipeline,
-    sunpln: ear.Pipeline,
 }
 
 main :: proc() {
@@ -31,14 +29,6 @@ main :: proc() {
 
     meshes := make([]FullMesh, len(mods))
     for &mesh, i in meshes {
-        vert := #load("../data/shaders/obj.vert", cstring)
-        frag := #load("../data/shaders/obj.frag", cstring)
-
-        sunvert := #load("../data/shaders/sun.vert", cstring)
-        sunfrag := #load("../data/shaders/sun.frag", cstring)
-
-        
-
         mesh.mesh = &mods[i]
         if len(mesh.mesh.verts) == 0 do continue
 
@@ -47,39 +37,26 @@ main :: proc() {
                 usage = .Static,
                 stride = size_of(models.Vertex),
             }, &mesh.mesh.verts[0], size_of(models.Vertex) * u32(len(mesh.mesh.verts)))
-
-        mesh.pln = ear.create_pipeline({
-                vertex = { source = &vert },
-                fragment = { source = &frag },
-                vertex_attribs = []ear.VertexAttribDesc {
-                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 0, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 0 * size_of(f32), },
-                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 1, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 3 * size_of(f32), },
-                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 2, type = .Float, components = 2, norm = false, stride = size_of(models.Vertex), offset = 6 * size_of(f32), },
-                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 3, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 8 * size_of(f32), },
-                },
-                depth = true,
-                cull_mode = .Back,
-                front = .CCW,
-            })
-
-        mesh.sunpln = ear.create_pipeline({
-                vertex = { source = &sunvert },
-                fragment = { source = &sunfrag },
-                vertex_attribs = []ear.VertexAttribDesc {
-                    ear.VertexAttribDesc{ buffer = &mesh.vbo, location = 0, type = .Float, components = 3, norm = false, stride = size_of(models.Vertex), offset = 0 * size_of(f32), },
-                },
-                depth = true,
-                cull_mode = .Back,
-                front = .CCW,
-            })
     }
-    defer for &mesh in meshes {
-        ear.delete_pipeline(mesh.sunpln)
-        ear.delete_pipeline(mesh.pln)
-        ear.delete_buffer(mesh.vbo)
-    }
-
+    defer for &mesh in meshes do ear.delete_buffer(mesh.vbo)
     defer delete(meshes)
+
+    vert := #load("../data/shaders/obj.vert", cstring)
+    frag := #load("../data/shaders/obj.frag", cstring)
+
+    pln := ear.create_pipeline({
+            vertex = { source = &vert },
+            fragment = { source = &frag },
+            vertex_attribs = []ear.VertexAttribDesc {
+                ear.VertexAttribDesc{ slot = 0, location = 0, type = .Float, components = 3, norm = false, offset = 0 * size_of(f32), },
+                ear.VertexAttribDesc{ slot = 0, location = 1, type = .Float, components = 3, norm = false, offset = 3 * size_of(f32), },
+                ear.VertexAttribDesc{ slot = 0, location = 2, type = .Float, components = 2, norm = false, offset = 6 * size_of(f32), },
+                ear.VertexAttribDesc{ slot = 0, location = 3, type = .Float, components = 3, norm = false, offset = 8 * size_of(f32), },
+            },
+            depth = true,
+            cull_mode = .Back,
+            front = .CCW,
+        })
 
     pln_data: struct{
         viewproj: glsl.mat4,
@@ -193,6 +170,20 @@ main :: proc() {
         })
     defer ear.delete_framebuffer(sunfb)
 
+    sunvert := #load("../data/shaders/sun.vert", cstring)
+    sunfrag := #load("../data/shaders/sun.frag", cstring)
+
+    sunpln := ear.create_pipeline({
+            vertex = { source = &sunvert },
+            fragment = { source = &sunfrag },
+            vertex_attribs = []ear.VertexAttribDesc {
+                ear.VertexAttribDesc{ slot = 0, location = 0, type = .Float, components = 3, norm = false, offset = 0 * size_of(f32), },
+            },
+            depth = true,
+            cull_mode = .Back,
+            front = .CCW,
+        })
+
     sunpln_data: struct{
         sun_mvp: glsl.mat4,
         time: f32,
@@ -280,9 +271,8 @@ main :: proc() {
         ear.bind_framebuffer(sunfb)
         ear.clear([3]f32{ 0,0,0 })
 
+        ear.bind_pipeline(sunpln)
         for mesh in meshes {
-            ear.bind_pipeline(mesh.sunpln)
-
             sunpln_data.obj = 0
             sunpln_data.off = { 0,0,0,0 }
             sunpln_data.yrot = 0
@@ -295,6 +285,7 @@ main :: proc() {
 
             ear.update_buffer(&sunubo)
             ear.bind_buffer(sunubo, 0)
+            ear.bind_buffer(mesh.vbo, 0)
 
             ear.draw(len(mesh.mesh.verts))
         }
@@ -307,9 +298,9 @@ main :: proc() {
         ear.bind_buffer(skyubo, 0)
         ear.draw(6)
 
+        ear.bind_pipeline(pln)
         for mesh in meshes {
             if mesh.mesh.name == "player" do continue
-            ear.bind_pipeline(mesh.pln)
 
             pln_data.obj = 0
             pln_data.off = { 0, 0, 0, 0 }
@@ -319,6 +310,7 @@ main :: proc() {
             ear.update_buffer(&ubo)
             ear.bind_buffer(ubo, 0)
             ear.bind_texture(sundepth, 4)
+            ear.bind_buffer(mesh.vbo, 0)
 
             ear.draw(len(mesh.mesh.verts))
         }
